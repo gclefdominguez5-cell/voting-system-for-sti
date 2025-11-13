@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VoteNow — Login & Voting System</title>
+  <style>
+    :root {
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#7c5cff;
+      font-family: Inter, ui-sans-serif, system-ui;
+    }
+    html,body {height:100%;margin:0;background:linear-gradient(180deg,#071025 0%, #0b1220 100%);color:#e6eef6;}
+    .hidden {display:none !important;}
+    
+    .center {display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;}
+    .card {background:rgba(255,255,255,0.05);padding:28px 24px;border-radius:12px;box-shadow:0 6px 30px rgba(2,6,23,0.6);width:300px;text-align:center;}
+    input[type=text], input[type=password] {width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:inherit;margin-top:8px;}
+    button {background:var(--accent);border:0;color:white;padding:10px 16px;border-radius:8px;font-weight:600;margin-top:10px;cursor:pointer;}
+    button.ghost {background:transparent;border:1px solid rgba(255,255,255,0.2);}
+    .container {max-width:980px;margin:36px auto;padding:20px;}
+    header {display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+    .candidate {display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:10px;margin-bottom:10px;background:rgba(255,255,255,0.02);}
+    .candidate h3 {margin:0;font-size:16px;}
+    .candidate p {margin:0;color:var(--muted);font-size:13px;}
+  </style>
+</head>
+<body>
+  <!-- LOGIN PAGE -->
+  <div id="loginPage" class="center">
+    <div class="card">
+      <h2>Welcome to Voting System for Student Council Organization</h2>
+      <p style="color:var(--muted);margin-bottom:14px">Login to start voting</p>
+      <input id="loginUser" type="text" placeholder="Enter username">
+      <input id="password" type="password" placeholder="Enter password">
+      <button id="loginBtn">Login</button>
+    </div>
+  </div>
+
+  <!-- MAIN PAGE -->
+  <div id="mainPage" class="hidden">
+    <div class="container">
+      <header>
+        <h1>VoteNow</h1>
+        <div>
+          <span id="welcomeUser"></span>
+          <button id="logoutBtn" class="ghost">Logout</button>
+        </div>
+      </header>
+      <section>
+        <h2>Candidates</h2>
+        <p style="color:var(--muted)">Click a button to vote. One vote per user.</p>
+        <div id="candidatesList"></div>
+        <button id="resultsBtn" class="ghost">View Results</button>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const CANDIDATES = [
+      { id: 'c1', name: 'Kiel Abalajos', desc: 'For President' },
+      { id: 'c2', name: 'Symon Pena', desc: 'For Vice President' },
+      { id: 'c3', name: 'Josh Sumido', desc: 'For Secretary' },
+      { id: 'c4', name: 'Gclef dominguez', desc: 'For Auditor' },
+      { id: 'c5', name: 'Zhyke Dela Cruz', desc: 'For Treasurer' },
+    ];
+
+    const LS_USER = 'votenow_user';
+    const LS_VOTES = 'votenow_votes';
+    const LS_VOTED = 'votenow_voted';
+
+    if(!localStorage.getItem(LS_VOTES)) {
+      const obj = {}; CANDIDATES.forEach(c=>obj[c.id]=0);
+      localStorage.setItem(LS_VOTES, JSON.stringify(obj));
+    }
+    if(!localStorage.getItem(LS_VOTED)) localStorage.setItem(LS_VOTED, JSON.stringify({}));
+
+    const loginPage = document.getElementById('loginPage');
+    const mainPage = document.getElementById('mainPage');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginUser = document.getElementById('loginUser');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const welcomeUser = document.getElementById('welcomeUser');
+    const candidatesList = document.getElementById('candidatesList');
+    const resultsBtn = document.getElementById('resultsBtn');
+
+    function showMainPage(){
+      loginPage.classList.add('hidden');
+      mainPage.classList.remove('hidden');
+      welcomeUser.textContent = `Logged in as ${localStorage.getItem(LS_USER)}`;
+      renderCandidates();
+    }
+
+    function renderCandidates(){
+      const votes = JSON.parse(localStorage.getItem(LS_VOTES));
+      const voted = JSON.parse(localStorage.getItem(LS_VOTED));
+      const user = localStorage.getItem(LS_USER);
+      candidatesList.innerHTML = '';
+      CANDIDATES.forEach(c => {
+        const div = document.createElement('div');
+        const disabled = voted[user] ? 'disabled' : '';
+        div.className = 'candidate';
+        div.innerHTML = `
+          <div>
+            <h3>${c.name}</h3>
+            <p>${c.desc}</p>
+          </div>
+          <div>
+            <strong>Votes: ${votes[c.id]}</strong><br>
+            <button ${disabled} data-id="${c.id}">Vote</button>
+          </div>`;
+        candidatesList.appendChild(div);
+      });
+      candidatesList.querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>vote(b.dataset.id));
+    }
+
+    function vote(id){
+      const user = localStorage.getItem(LS_USER);
+      const votes = JSON.parse(localStorage.getItem(LS_VOTES));
+      const voted = JSON.parse(localStorage.getItem(LS_VOTED));
+      if(voted[user]) return alert('You already voted.');
+      votes[id]++; voted[user] = id;
+      localStorage.setItem(LS_VOTES, JSON.stringify(votes));
+      localStorage.setItem(LS_VOTED, JSON.stringify(voted));
+      alert('Vote recorded!');
+      renderCandidates();
+    }
+
+    loginBtn.onclick = () => {
+      const user = loginUser.value.trim();
+      if(!user) return alert('Enter a username.');
+      localStorage.setItem(LS_USER, user);
+      showMainPage();
+    };
+
+    logoutBtn.onclick = () => {
+      localStorage.removeItem(LS_USER);
+      mainPage.classList.add('hidden');
+      loginPage.classList.remove('hidden');
+    };
+
+    resultsBtn.onclick = () => {
+      const votes = JSON.parse(localStorage.getItem(LS_VOTES));
+      const msg = CANDIDATES.map(c => `${c.name}: ${votes[c.id]}`).join('\n');
+      alert('Results:\n' + msg);
+    };
+
+    if(localStorage.getItem(LS_USER)) showMainPage();
+  </script>
+</body>
+</html>
